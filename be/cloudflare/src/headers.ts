@@ -1,30 +1,55 @@
-const REQ_ALLOW = ['content-type', 'accept', 'accept-encoding', 'content-length', 'user-agent', 'if-none-match', 'if-modified-since', 'range'];
-const HOP = ['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'set-cookie', 'set-cookie2'];
+const REQUEST_ALLOW = [
+  'content-type',
+  'accept',
+  'accept-encoding',
+  'content-length',
+  'accept-language',
+  'if-none-match',
+  'if-modified-since',
+  'range',
+];
 
-export function buildRequestHeaders(req: Request): Headers {
+const RESPONSE_DROP = new Set([
+  'set-cookie',
+  'set-cookie2',
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
+
+/** Allowlist: only listed client headers reach the internal service. */
+export function requestHeaders(req: Request, requestId: string): Headers {
   const h = new Headers();
-  for (const k of REQ_ALLOW) {
-    const v = req.headers.get(k);
-    if (v !== null) h.set(k, v);
+  for (const name of REQUEST_ALLOW) {
+    const v = req.headers.get(name);
+    if (v !== null) h.set(name, v);
   }
-  h.set('x-request-id', crypto.randomUUID());
+  h.set('x-request-id', requestId);
   h.set('x-forwarded-host', new URL(req.url).host);
   return h;
 }
 
-export function sanitizeResponse(up: Response, key: string, origin: URL): Headers {
-  const h = new Headers(up.headers);
-  for (const k of HOP) h.delete(k);
+/** Drops Set-Cookie/hop-by-hop headers; Location is kept only if it stays inside the same upstream origin. */
+export function responseHeaders(upstream: Headers, upstreamOrigin: string, key: string, requestId: string): Headers {
+  const h = new Headers();
+  upstream.forEach((value, name) => {
+    if (!RESPONSE_DROP.has(name.toLowerCase())) h.set(name, value);
+  });
   const loc = h.get('location');
-  if (loc !== null) {
-    let u: URL | null = null;
+  h.delete('location');
+  if (loc) {
     try {
-      u = new URL(loc, origin.origin);
+      const u = new URL(loc, upstreamOrigin);
+      if (u.origin === upstreamOrigin) h.set('location', `/${key}${u.pathname}${u.search}`);
     } catch {
-      u = null;
+      // unparsable Location is dropped
     }
-    if (u && u.origin === origin.origin) h.set('location', `/${key}${u.pathname}${u.search}`);
-    else h.delete('location');
   }
+  h.set('x-request-id', requestId);
   return h;
 }
