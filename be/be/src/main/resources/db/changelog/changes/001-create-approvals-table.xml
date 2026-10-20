@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-create-approvals-table" author="bach">
+        <createTable tableName="approvals">
+            <column name="id" type="uuid">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="resource_type" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resource_id" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requester_id" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approver_id" type="varchar(255)"/>
+            <column name="reason" type="text"/>
+            <column name="requested_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approved_at" type="timestamp"/>
+            <column name="rejected_at" type="timestamp"/>
+            <column name="version" type="bigint" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="approvals" indexName="idx_approvals_resource">
+            <column name="resource_type"/>
+            <column name="resource_id"/>
+        </createIndex>
+
+        <createIndex tableName="approvals" indexName="idx_approvals_status">
+            <column name="status"/>
+        </createIndex>
+
+        <createIndex tableName="approvals" indexName="idx_approvals_requester">
+            <column name="requester_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
