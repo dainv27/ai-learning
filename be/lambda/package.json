@@ -1,0 +1,13 @@
+{
+  "name": "time-api-lambda",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "GET /time Lambda returning the current UTC time as ISO 8601",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
