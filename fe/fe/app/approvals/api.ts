@@ -11,8 +11,17 @@ async function handleResponse<T>(response: Response): Promise<T> {
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
     
     try {
-      const errorBody: ErrorResponse = await response.json();
-      if (errorBody.error) {
+      const errorBody = await response.json();
+      
+      // RFC 7807 format: {type, title, status, detail}
+      if (errorBody.title) {
+        errorMessage = errorBody.title;
+        if (errorBody.detail) {
+          errorMessage += `: ${errorBody.detail}`;
+        }
+      }
+      // Legacy format: {error: {code, message, detail}}
+      else if (errorBody.error) {
         errorMessage = errorBody.error.message;
         if (errorBody.error.detail) {
           errorMessage += ` (${errorBody.error.detail})`;
