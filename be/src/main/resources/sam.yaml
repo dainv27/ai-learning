@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ApprovalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: java11
+      Handler: com.example.approve.ApprovalController::approve
+      CodeUri: s3://phase0-demo-bucket/approve-service.jar
+      MemorySize: 512
+      Timeout: 30
+      Policies:
+        - AmazonAPIGatewayAdminPolicy
+      Events:
+        ApprovalApi:
+          Type: Api
+          Properties:
+            Path: /api/approvals
+            Method: POST
+            RestApiId: !Ref ApprovalApi
