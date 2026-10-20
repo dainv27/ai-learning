@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Tiny echo Lambda (GET /echo?q=...) behind an API Gateway HTTP API
+
+Resources:
+  EchoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs22.x
+      Handler: src/handler.handler
+      CodeUri: .
+      Timeout: 5
+      MemorySize: 128
+      Events:
+        EchoApi:
+          Type: HttpApi
+          Properties:
+            # ANY (not GET) so that other methods reach the function, which answers 405 + Allow.
+            Method: ANY
+            Path: /echo
+
+Outputs:
+  EchoEndpoint:
+    Description: Echo endpoint URL
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/echo'
