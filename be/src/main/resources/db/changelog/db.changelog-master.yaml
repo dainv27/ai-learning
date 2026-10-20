@@ -1,0 +1,93 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-approvals-table
+      author: bach
+      changes:
+        - createTable:
+            tableName: approvals
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: resource_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource_type
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: requester_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: approver_id
+                  type: varchar(255)
+              - column:
+                  name: comment
+                  type: varchar(1000)
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: approvals
+            indexName: idx_approvals_resource_id
+            columns:
+              - column:
+                  name: resource_id
+        - createIndex:
+            tableName: approvals
+            indexName: idx_approvals_status
+            columns:
+              - column:
+                  name: status
+
+  - changeSet:
+      id: 2-create-idempotency-keys-table
+      author: bach
+      changes:
+        - createTable:
+            tableName: idempotency_keys
+            columns:
+              - column:
+                  name: idempotency_key
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: approval_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: idempotency_keys
+            baseColumnNames: approval_id
+            referencedTableName: approvals
+            referencedColumnNames: id
+            constraintName: fk_idempotency_approval
