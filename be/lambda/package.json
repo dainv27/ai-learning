@@ -1,0 +1,13 @@
+{
+  "name": "vn-provinces-api-lambda",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lambda handler serving the list of Vietnam provinces and cities",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
