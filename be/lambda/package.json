@@ -1,0 +1,13 @@
+{
+  "name": "echo-lambda",
+  "version": "1.0.0",
+  "description": "Tiny echo Lambda behind API Gateway HTTP API",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
