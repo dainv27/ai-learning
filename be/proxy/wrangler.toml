@@ -1,0 +1,11 @@
+name = "internal-service-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Placeholder origins only. Replace per environment. Never commit real internal hostnames.
+[vars]
+SERVICE_EXAMPLE_ORIGIN = "https://example-internal.invalid"
+
+# Secrets are NOT stored in this file. Set them with:
+#   wrangler secret put PROXY_CLIENT_TOKEN
+#   wrangler secret put SERVICE_EXAMPLE_TOKEN
