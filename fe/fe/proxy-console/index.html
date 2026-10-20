@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>Proxy console</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem;color:#1b1b1b}
+label{display:block;margin-top:.75rem;font-weight:600}
+input,select,textarea{width:100%;box-sizing:border-box;padding:.4rem;font:inherit}
+textarea{min-height:6rem;font-family:monospace}
+button{margin-top:1rem;padding:.5rem 1.2rem;font:inherit}
+pre{background:#f5f5f5;padding:1rem;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.hint{color:#666;font-size:.9rem}
+</style>
+</head>
+<body>
+<h1>Proxy console</h1>
+<p class='hint'>Calls the proxy Worker as <code>/&lt;service-key&gt;/&lt;path&gt;</code>. The client token is kept in memory only. This page never stores or logs it.</p>
+<form id='form'>
+<label for='base'>Worker base URL</label>
+<input id='base' type='url' placeholder='https://proxy.example.invalid' required>
+<label for='token'>Client token (PROXY_CLIENT_TOKEN)</label>
+<input id='token' type='password' autocomplete='off' required>
+<label for='service'>Service key</label>
+<input id='service' type='text' pattern='[a-z0-9-]{1,64}' value='example' required>
+<label for='path'>Upstream path (without service key)</label>
+<input id='path' type='text' value='v1/items' required>
+<label for='method'>Method</label>
+<select id='method'><option>GET</option><option>HEAD</option><option>POST</option></select>
+<label for='body'>Request body (POST only, sent as JSON)</label>
+<textarea id='body'></textarea>
+<button type='submit'>Send</button>
+</form>
+<h2>Result</h2>
+<pre id='out'>No request sent yet.</pre>
+<script>
+(function () {
+  var form = document.getElementById('form');
+  var out = document.getElementById('out');
+
+  function show(lines) {
+    out.textContent = lines.join('\n');
+  }
+
+  function looksUnsafe(path) {
+    if (path.includes('\\') || path.includes('//')) {
+      return true;
+    }
+    return path.split('/').some(function (segment) {
+      return segment === '.' || segment === '..';
+    });
+  }
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    var base = document.getElementById('base').value.trim().replace(/\/+$/, '');
+    var token = document.getElementById('token').value;
+    var service = document.getElementById('service').value.trim();
+    var path = document.getElementById('path').value.trim().replace(/^\/+/, '');
+    var method = document.getElementById('method').value;
+    var body = document.getElementById('body').value;
+
+    if (!/^[a-z0-9-]{1,64}$/.test(service)) {
+      show(['Invalid service key. Use lowercase letters, digits and hyphens.']);
+      return;
+    }
+    if (looksUnsafe(path)) {
+      show(['Path contains traversal or invalid segments. Request not sent.']);
+      return;
+    }
+
+    var url = base + '/' + service + '/' + path;
+    var init = {
+      method: method,
+      headers: { Authorization: 'Bearer ' + token },
+      cache: 'no-store'
+    };
+    if (method === 'POST') {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = body;
+    }
+
+    show(['Sending ' + method + ' ' + url + ' ...']);
+    try {
+      var res = await fetch(url, init);
+      var text = method === 'HEAD' ? '' : await res.text();
+      var lines = ['HTTP ' + res.status + ' ' + res.statusText];
+      var allow = res.headers.get('Allow');
+      if (allow) {
+        lines.push('Allow: ' + allow);
+      }
+      lines.push('Content-Type: ' + (res.headers.get('Content-Type') || '(none)'));
+      lines.push('X-Request-Id: ' + (res.headers.get('X-Request-Id') || '(none)'));
+      lines.push('');
+      lines.push(text);
+      show(lines);
+    } catch (err) {
+      show(['Request failed: network error, or the browser blocked the cross-origin call.']);
+    }
+  });
+})();
+</script>
+</body>
+</html>
