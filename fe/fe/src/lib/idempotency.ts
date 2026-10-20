@@ -1,15 +1,16 @@
 /**
- * Generate a deterministic idempotency key for an operation.
- * The key combines the operation type and resource ID with a client-side timestamp
- * to ensure uniqueness while allowing the same logical operation to be retried.
+ * Generate a unique idempotency key for an operation.
+ * The key combines the operation type, resource ID, timestamp, and a UUID
+ * to ensure uniqueness across all calls.
  */
 export function generateIdempotencyKey(operation: string, resourceId: string): string {
-  // Use a stable timestamp (rounded to nearest second) so retries within the same
-  // second use the same key, but different operations get different keys
-  const timestamp = Math.floor(Date.now() / 1000);
+  const timestamp = Date.now();
+  const uuid = crypto.randomUUID();
   
-  // Combine operation, resource, and timestamp into a deterministic key
-  return `${operation}-${resourceId}-${timestamp}`;
+  // Format: idem-{operation}-{resourceId}-{timestamp}-{uuid}
+  // This ensures every call produces a unique key while maintaining
+  // semantic information about what operation is being protected
+  return `idem-${operation}-${resourceId}-${timestamp}-${uuid}`;
 }
 
 /**
