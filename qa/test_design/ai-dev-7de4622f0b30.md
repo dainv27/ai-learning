@@ -10,208 +10,170 @@ Validate the reject path
 
 ## Objective
 
-Validate the reject path implementation (POST /api/approvals/{id}/reject) against the requirement: state transitions (only PENDING -> REJECTED allowed), idempotency via Idempotency-Key header, input validation, error handling for all documented status codes, and the integration between backend and frontend matching the exact API contract.
+Verify the reject path implementation meets all requirements: state machine validation (only PENDING→REJECTED transitions allowed), idempotency (duplicate keys return cached results), input validation (Idempotency-Key header required, comment field validated), error handling (404 for missing approvals, 409 for invalid state transitions, 400 for bad requests), and API contract alignment between backend and frontend (request body contains only 'comment', no approverId).
 
 ## Approach
 
-Design unit tests for the domain model's reject() method to verify state machine rules in isolation. Design integration tests for the complete reject flow: happy path (PENDING -> REJECTED with 200), invalid state transitions (APPROVED/REJECTED -> 409), missing approval (404), missing/invalid Idempotency-Key (400), and idempotency replay (duplicate key returns cached result). Since the delivered code is Java Spring Boot (not Node.js), the tests will verify the implementation contract by examining the source code structure and logic; actual execution will simulate the behavior based on the delivered Java code's visible signatures and patterns.
+Design unit tests for isolated functions (state transition logic, idempotency checks, input validation) and integration tests for the complete reject flow through the handler. Test the happy path (PENDING→REJECTED with valid inputs), boundary cases (empty/missing comment, missing headers), error paths (non-existent approval, already-approved/rejected approvals), and idempotency (duplicate keys). Import the delivered Node.js Lambda handler (be/be/reject-handler.mjs) and test against the actual exports. Every designed case receives at least one executable test with its case id in the title.
 
-## Suite TS-UNIT-001: Domain Model Reject Validation (unit)
-
-| ID | Title | Verifies | Priority | Result |
-|---|---|---|---|---|
-| TC-001 | PENDING approval transitions to REJECTED when reject() is called | State machine: PENDING -> REJECTED is valid | HIGH | NOT_IMPLEMENTED |
-| TC-002 | APPROVED approval throws InvalidStateTransitionException when reject() is called | State machine: APPROVED -> REJECTED is invalid | HIGH | NOT_IMPLEMENTED |
-| TC-003 | REJECTED approval throws InvalidStateTransitionException when reject() is called again | State machine: REJECTED -> REJECTED is invalid (no double-reject) | HIGH | NOT_IMPLEMENTED |
-
-### TC-001 — PENDING approval transitions to REJECTED when reject() is called
-
-1. Create an Approval with status PENDING
-2. Call reject(userId, comment)
-3. Check status becomes REJECTED
-4. Check approverId is set to userId
-5. Check comment is set
-6. Check updatedAt is updated
-
-**Expected:** Status is REJECTED, approverId and comment are populated, updatedAt is recent
-
-### TC-002 — APPROVED approval throws InvalidStateTransitionException when reject() is called
-
-1. Create an Approval with status APPROVED
-2. Call reject(userId, comment)
-3. Catch the exception
-
-**Expected:** InvalidStateTransitionException is thrown with message indicating only PENDING can be rejected
-
-### TC-003 — REJECTED approval throws InvalidStateTransitionException when reject() is called again
-
-1. Create an Approval with status REJECTED
-2. Call reject(userId, comment)
-3. Catch the exception
-
-**Expected:** InvalidStateTransitionException is thrown with message indicating only PENDING can be rejected
-
-## Suite TS-UNIT-002: RejectApprovalUseCase Logic (unit)
+## Suite TS-001: Reject endpoint input validation (unit)
 
 | ID | Title | Verifies | Priority | Result |
 |---|---|---|---|---|
-| TC-004 | Use case returns cached result when idempotency key was already used | Idempotency: duplicate Idempotency-Key returns cached approval without re-executing reject | HIGH | NOT_IMPLEMENTED |
-| TC-005 | Use case throws ApprovalNotFoundException when approval does not exist | Error handling: missing approval -> 404 | HIGH | NOT_IMPLEMENTED |
-| TC-006 | Use case records idempotency key after successful reject | Idempotency: the key is persisted after the reject succeeds | MEDIUM | NOT_IMPLEMENTED |
+| TC-001 | Missing Idempotency-Key header returns 400 | Reject endpoint must require Idempotency-Key header for idempotent mutations | HIGH | PASSED |
+| TC-002 | Empty Idempotency-Key header returns 400 | Reject endpoint must validate that Idempotency-Key is not blank | HIGH | PASSED |
+| TC-003 | Request body with only comment field is accepted | API contract: request body contains only 'comment' field, no approverId | HIGH | PASSED |
+| TC-004 | Malformed JSON body returns 400 | Reject endpoint must validate JSON syntax | MEDIUM | PASSED |
 
-### TC-004 — Use case returns cached result when idempotency key was already used
+### TC-001 — Missing Idempotency-Key header returns 400
 
-1. Mock repository to return a cached approval for the idempotency key
-2. Call execute(approvalId, userId, comment, idempotencyKey)
-3. Verify the cached approval is returned
-4. Verify the repository's save() and idempotencyService.recordKey() are NOT called
+1. Call reject handler with valid approval id and body but no Idempotency-Key header
+2. Check response status code
+3. Verify error body contains MISSING_IDEMPOTENCY_KEY code
 
-**Expected:** Cached approval is returned, no new rejection is executed
+**Expected:** Returns 400 with error object {code: 'MISSING_IDEMPOTENCY_KEY', message: descriptive text}
 
-### TC-005 — Use case throws ApprovalNotFoundException when approval does not exist
+### TC-002 — Empty Idempotency-Key header returns 400
 
-1. Mock repository to return empty Optional for the approvalId
-2. Call execute(approvalId, userId, comment, idempotencyKey)
-3. Catch the exception
+1. Call reject handler with Idempotency-Key set to empty string
+2. Check response status code
+3. Verify error response
 
-**Expected:** ApprovalNotFoundException is thrown with the approvalId in the message
+**Expected:** Returns 400 with MISSING_IDEMPOTENCY_KEY error
 
-### TC-006 — Use case records idempotency key after successful reject
+### TC-003 — Request body with only comment field is accepted
 
-1. Mock repository to return a PENDING approval
-2. Call execute(approvalId, userId, comment, idempotencyKey)
-3. Verify idempotencyService.recordKey(idempotencyKey, approvalId) was called
+1. Call reject handler with body containing only {comment: 'reason'}
+2. Verify successful processing (state permitting)
+3. Confirm no error about missing fields
 
-**Expected:** Idempotency key is recorded with the approval ID
+**Expected:** Request is processed without validation errors about missing approverId
 
-## Suite TS-INTEGRATION-001: RejectController HTTP Contract (integration)
+### TC-004 — Malformed JSON body returns 400
 
-| ID | Title | Verifies | Priority | Result |
-|---|---|---|---|---|
-| TC-007 | POST /api/approvals/{id}/reject with valid PENDING approval returns 200 and updated approval | Happy path: PENDING -> REJECTED with 200 OK response | HIGH | NOT_IMPLEMENTED |
-| TC-008 | POST /api/approvals/{id}/reject on APPROVED approval returns 409 | Invalid state transition: APPROVED -> REJECTED returns 409 Conflict | HIGH | NOT_IMPLEMENTED |
-| TC-009 | POST /api/approvals/{id}/reject on REJECTED approval returns 409 | Invalid state transition: REJECTED -> REJECTED returns 409 Conflict | HIGH | NOT_IMPLEMENTED |
-| TC-010 | POST /api/approvals/{id}/reject with non-existent ID returns 404 | Missing approval: returns 404 Not Found | HIGH | NOT_IMPLEMENTED |
-| TC-011 | POST /api/approvals/{id}/reject without Idempotency-Key header returns 400 | Input validation: missing Idempotency-Key returns 400 Bad Request | HIGH | NOT_IMPLEMENTED |
-| TC-012 | POST /api/approvals/{id}/reject with empty Idempotency-Key returns 400 | Input validation: blank Idempotency-Key is invalid | MEDIUM | NOT_IMPLEMENTED |
-| TC-013 | POST /api/approvals/{id}/reject with duplicate Idempotency-Key returns cached result with 200 | Idempotency: replay with same key returns the same approval without re-executing | HIGH | NOT_IMPLEMENTED |
+1. Call reject handler with invalid JSON in body
+2. Check response status code
+3. Verify error indicates JSON parsing failure
 
-### TC-007 — POST /api/approvals/{id}/reject with valid PENDING approval returns 200 and updated approval
+**Expected:** Returns 400 with appropriate error message
 
-1. Send POST to /api/approvals/{validId}/reject with {comment: 'reason'} and Idempotency-Key header
-2. Check response status is 200
-3. Check response body has status='REJECTED', approverId is set, comment='reason'
-
-**Expected:** 200 OK with ApprovalResponse showing REJECTED status
-
-### TC-008 — POST /api/approvals/{id}/reject on APPROVED approval returns 409
-
-1. Send POST to /api/approvals/{approvedId}/reject with valid body and Idempotency-Key
-2. Check response status is 409
-3. Check response body has error.code='INVALID_STATE_TRANSITION' and a descriptive message
-
-**Expected:** 409 Conflict with error object
-
-### TC-009 — POST /api/approvals/{id}/reject on REJECTED approval returns 409
-
-1. Send POST to /api/approvals/{rejectedId}/reject with valid body and Idempotency-Key
-2. Check response status is 409
-3. Check response body has error.code='INVALID_STATE_TRANSITION'
-
-**Expected:** 409 Conflict with error object
-
-### TC-010 — POST /api/approvals/{id}/reject with non-existent ID returns 404
-
-1. Send POST to /api/approvals/{randomUUID}/reject with valid body and Idempotency-Key
-2. Check response status is 404
-3. Check response body has error.code='APPROVAL_NOT_FOUND'
-
-**Expected:** 404 Not Found with error object
-
-### TC-011 — POST /api/approvals/{id}/reject without Idempotency-Key header returns 400
-
-1. Send POST to /api/approvals/{validId}/reject with valid body but no Idempotency-Key header
-2. Check response status is 400
-3. Check response body has error.code='MISSING_IDEMPOTENCY_KEY'
-
-**Expected:** 400 Bad Request with error object
-
-### TC-012 — POST /api/approvals/{id}/reject with empty Idempotency-Key returns 400
-
-1. Send POST with Idempotency-Key header set to empty string
-2. Check response status is 400
-3. Check error.code='MISSING_IDEMPOTENCY_KEY'
-
-**Expected:** 400 Bad Request
-
-### TC-013 — POST /api/approvals/{id}/reject with duplicate Idempotency-Key returns cached result with 200
-
-1. Send POST to /api/approvals/{validId}/reject with a unique Idempotency-Key (first time)
-2. Send POST to the same endpoint with the same Idempotency-Key (replay)
-3. Check second response status is 200
-4. Check second response body matches the first (same status, same approverId, same timestamp)
-
-**Expected:** 200 OK with identical approval data
-
-## Suite TS-INTEGRATION-002: Frontend-Backend API Contract (integration)
+## Suite TS-002: State machine validation for reject transitions (integration)
 
 | ID | Title | Verifies | Priority | Result |
 |---|---|---|---|---|
-| TC-014 | RejectButton sends only 'comment' field in request body (no approverId) | API contract: frontend sends {comment} only, backend extracts approverId from authenticated user | HIGH | NOT_IMPLEMENTED |
-| TC-015 | RejectButton sends Idempotency-Key header with every request | Idempotency: frontend generates and sends Idempotency-Key header | HIGH | NOT_IMPLEMENTED |
-| TC-016 | RejectButton handles 409 response by showing the error message | Error handling: 409 conflict displays the backend error message | MEDIUM | NOT_IMPLEMENTED |
-| TC-017 | RejectButton handles 404 response by showing 'Approval not found' | Error handling: 404 displays appropriate message | MEDIUM | NOT_IMPLEMENTED |
-| TC-018 | RejectButton handles 400 response by showing the backend error message | Error handling: 400 bad request displays the error | MEDIUM | NOT_IMPLEMENTED |
-| TC-019 | ApprovalDetail page displays rejection comment and rejector when status is REJECTED | UI: show rejection details for rejected approvals | LOW | NOT_IMPLEMENTED |
+| TC-005 | PENDING approval can be rejected successfully | Only PENDING approvals can transition to REJECTED state | HIGH | PASSED |
+| TC-006 | APPROVED approval cannot be rejected (returns 409) | State machine prevents APPROVED→REJECTED transition | HIGH | PASSED |
+| TC-007 | REJECTED approval cannot be rejected again (returns 409) | State machine prevents REJECTED→REJECTED transition (not idempotent retries, but new attempts) | HIGH | PASSED |
 
-### TC-014 — RejectButton sends only 'comment' field in request body (no approverId)
+### TC-005 — PENDING approval can be rejected successfully
 
-1. Inspect the RejectButton component's fetch call
-2. Verify the body is JSON.stringify({ comment: ... })
-3. Verify no approverId field is present in the request
+1. Set up mock approval with status PENDING
+2. Call reject handler with valid inputs
+3. Check response status is 200
+4. Verify response body shows status REJECTED
+5. Verify approverId and comment are populated
 
-**Expected:** Request body contains only 'comment' field
+**Expected:** Returns 200 with approval object having status='REJECTED', approverId set, and comment set
 
-### TC-015 — RejectButton sends Idempotency-Key header with every request
+### TC-006 — APPROVED approval cannot be rejected (returns 409)
 
-1. Inspect the RejectButton component's fetch call
-2. Verify 'Idempotency-Key' header is set to a UUID
+1. Set up mock approval with status APPROVED
+2. Attempt to reject it
+3. Check response status code
+4. Verify error body contains INVALID_STATE_TRANSITION code
 
-**Expected:** Idempotency-Key header is present and is a valid UUID
+**Expected:** Returns 409 with error explaining that only PENDING approvals can be rejected
 
-### TC-016 — RejectButton handles 409 response by showing the error message
+### TC-007 — REJECTED approval cannot be rejected again (returns 409)
 
-1. Inspect the RejectButton component's response handling for status 409
-2. Verify it parses data.error.message and sets error state
+1. Set up mock approval with status REJECTED
+2. Attempt to reject it with a different idempotency key
+3. Check response status code
+4. Verify error indicates invalid state transition
 
-**Expected:** 409 response shows error message to user
+**Expected:** Returns 409 with INVALID_STATE_TRANSITION error
 
-### TC-017 — RejectButton handles 404 response by showing 'Approval not found'
+## Suite TS-003: Idempotency behavior (integration)
 
-1. Inspect the RejectButton component's response handling for status 404
-2. Verify it sets error to 'Approval not found'
+| ID | Title | Verifies | Priority | Result |
+|---|---|---|---|---|
+| TC-008 | Duplicate idempotency key returns cached result | Reject endpoint is idempotent: same key returns the same result without re-executing | HIGH | FAILED |
+| TC-009 | Different idempotency keys are treated as separate requests | Each unique idempotency key represents a distinct operation | MEDIUM | FAILED |
 
-**Expected:** 404 response shows not found message
+### TC-008 — Duplicate idempotency key returns cached result
 
-### TC-018 — RejectButton handles 400 response by showing the backend error message
+1. Reject a PENDING approval with idempotency key K1
+2. Record the response
+3. Call reject again with same key K1 but different comment
+4. Compare responses
 
-1. Inspect the RejectButton component's response handling for status 400
-2. Verify it parses data.error.message and sets error state
+**Expected:** Second call returns the same approval object as the first (original comment, not new comment), status 200
 
-**Expected:** 400 response shows error message to user
+### TC-009 — Different idempotency keys are treated as separate requests
 
-### TC-019 — ApprovalDetail page displays rejection comment and rejector when status is REJECTED
+1. Reject an approval with key K1
+2. Attempt to reject the same approval with key K2
+3. Verify second request is evaluated independently
 
-1. Inspect the ApprovalDetail page rendering logic
-2. Verify it displays approval.comment and approval.approverId when approval.status === 'REJECTED'
+**Expected:** Second request with different key returns 409 (approval already rejected) rather than cached result
 
-**Expected:** Rejection comment and rejector are visible for REJECTED approvals
+## Suite TS-004: Error handling for missing resources (integration)
+
+| ID | Title | Verifies | Priority | Result |
+|---|---|---|---|---|
+| TC-010 | Non-existent approval id returns 404 | Reject endpoint must return 404 when approval is not found | HIGH | PASSED |
+| TC-011 | Invalid UUID format in path is handled gracefully | Reject endpoint validates path parameters | LOW | PASSED |
+
+### TC-010 — Non-existent approval id returns 404
+
+1. Call reject handler with a non-existent UUID
+2. Check response status code
+3. Verify error body contains APPROVAL_NOT_FOUND code
+
+**Expected:** Returns 404 with error {code: 'APPROVAL_NOT_FOUND', message: includes the id}
+
+### TC-011 — Invalid UUID format in path is handled gracefully
+
+1. Call reject handler with malformed id (not a UUID)
+2. Check response status code
+3. Verify error response is appropriate
+
+**Expected:** Returns 400 or 404 with error indicating invalid id format
+
+## Suite TS-005: Response contract validation (integration)
+
+| ID | Title | Verifies | Priority | Result |
+|---|---|---|---|---|
+| TC-012 | Success response contains all required approval fields | Reject endpoint returns complete approval object on success | HIGH | PASSED |
+| TC-013 | Error responses have consistent shape | All error responses follow {error: {code, message}} shape per API design standard | MEDIUM | PASSED |
+| TC-014 | Response Content-Type is application/json | Reject endpoint returns JSON with proper content-type header | LOW | PASSED |
+
+### TC-012 — Success response contains all required approval fields
+
+1. Successfully reject a PENDING approval
+2. Parse response body
+3. Check for presence of id, requesterId, description, status, approverId, comment, createdAt, updatedAt
+
+**Expected:** Response body is valid JSON with all 8 fields present and correctly typed
+
+### TC-013 — Error responses have consistent shape
+
+1. Trigger each error condition (400, 404, 409)
+2. Parse response bodies
+3. Verify each has top-level 'error' object with 'code' and 'message' strings
+
+**Expected:** Every error response has {error: {code: string, message: string}} structure
+
+### TC-014 — Response Content-Type is application/json
+
+1. Call reject handler (any scenario)
+2. Check response headers
+3. Verify Content-Type is application/json
+
+**Expected:** Response headers include 'content-type': 'application/json' or 'application/json; charset=utf-8'
 
 ## Test suite files
 
-- `qa/tests/reject-domain-model.test.mjs`
-- `qa/tests/reject-use-case.test.mjs`
-- `qa/tests/reject-controller-contract.test.mjs`
-- `qa/tests/reject-frontend-contract.test.mjs`
+- `qa/tests/reject-handler.test.mjs`
 
 > Written by Quyên (QA engineer) of the AI Agent Team, backed by **anthropic/claude-sonnet-4.5** (openrouter).
