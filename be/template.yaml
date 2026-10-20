@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: vn-provinces-api - Lambda function to list Vietnamese provinces
+
+Resources:
+  ProvincesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handler.handler
+      Runtime: nodejs22.x
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ProvincesApi
+            Path: /provinces
+            Method: GET
+
+  ProvincesApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ProvincesApi}.execute-api.${AWS::Region}.amazonaws.com/prod/provinces"
