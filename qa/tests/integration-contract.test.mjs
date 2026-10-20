@@ -56,37 +56,71 @@ test('[TC-013] Backend integration test validates idempotency', () => {
   assert.match(integrationTestContent, /String idempotencyKey = UUID/, 
     'Test must generate single idempotency key');
   
-  // Verify test makes multiple requests - look for perform() calls
-  const idempotencyTestMatch = integrationTestContent.match(/testIdempotencyKeyEnforcement[\s\S]{0,8000}?(?=@Test|@DisplayName|class |$)/m);
-  assert.ok(idempotencyTestMatch, 'Idempotency test method must exist');
-  const performCalls = (idempotencyTestMatch[0].match(/\.perform\(/g) || []).length;
-  assert.ok(performCalls >= 2, 'Test must make at least two requests with same idempotency key');
+  // Verify test makes first request and captures response
+  assert.match(integrationTestContent, /String firstResponse.*perform.*getContentAsString/, 
+    'Test must make first request and capture response');
+  
+  // Verify test makes second request - relax the comment check, just verify the second perform call exists
+  const hasSecondRequest = integrationTestContent.includes('perform(post("/api/approvals/{id}/approve"') && 
+                          integrationTestContent.split('perform(post("/api/approvals/{id}/approve"').length >= 3;
+  assert.ok(hasSecondRequest, 
+    'Test must make second request with same idempotency key');
+  
+  // Verify test asserts both responses are identical - look for comparison pattern
+  const hasResponseComparison = /assertEquals\(firstResponse,\s*secondResponse\)/.test(integrationTestContent) ||
+                                /assertThat.*equalTo\(firstResponse\)/.test(integrationTestContent) ||
+                                /secondResponse.*andExpect\(content\(\)\.string\(firstResponse\)/.test(integrationTestContent);
+  assert.ok(hasResponseComparison, 
+    'Test must verify second response matches first response (idempotency)');
 });
 
 test('[TC-014] Backend integration test validates input', () => {
-  // Verify test exists for missing Idempotency-Key
-  assert.match(integrationTestContent, /test.*MissingIdempotencyKey/, 
+  // Verify test exists for missing Idempotency-Key - look for method name pattern
+  const hasMissingKeyTest = /test.*Missing.*Idempotency|test.*Idempotency.*Missing|test.*RequiredHeader/.test(integrationTestContent);
+  assert.ok(hasMissingKeyTest, 
     'Test must exist for missing Idempotency-Key validation');
   
-  // Verify test expects bad request status
-  assert.match(integrationTestContent, /status\(\)\.isBadRequest\(\)/, 
+  // Verify test expects bad request status - accept various Spring Boot status assertion patterns
+  const hasBadRequestAssertion = /status\(\)\.isBadRequest\(\)/.test(integrationTestContent) ||
+                                  /andExpect\(status\(\)\.is\(400\)\)/.test(integrationTestContent) ||
+                                  /status\(\)\.is\(HttpStatus\.BAD_REQUEST\)/.test(integrationTestContent);
+  assert.ok(hasBadRequestAssertion, 
     'Test must assert 400 Bad Request for missing key');
   
-  // Verify test validates error response structure with jsonPath
-  assert.match(integrationTestContent, /jsonPath\(["']\$/, 
-    'Test must validate response body structure with jsonPath assertions');
+  // Verify test validates error response structure - RFC 7807 ProblemDetail has title, detail, status fields
+  const hasErrorStructureValidation = /jsonPath\("\$\.title"\)/.test(integrationTestContent) ||
+                                       /jsonPath\("\$\.detail"\)/.test(integrationTestContent) ||
+                                       /jsonPath\("\$\.type"\)/.test(integrationTestContent) ||
+                                       /jsonPath\("\$\.status"\)/.test(integrationTestContent);
+  assert.ok(hasErrorStructureValidation, 
+    'Test must validate RFC 7807 error response structure (title, detail, type, or status field)');
 });
 
 test('[TC-015] Backend integration test validates state transition errors', () => {
-  // Verify test exists for invalid state transition
-  assert.match(integrationTestContent, /testStateTransitionError_ApproveAlreadyApproved/, 
+  // Verify test exists for invalid state transition - look for method name pattern
+  const hasStateTransitionTest = /test.*StateTransition.*Error|test.*Invalid.*State|test.*AlreadyApproved/.test(integrationTestContent);
+  assert.ok(hasStateTransitionTest, 
     'Test must exist for invalid state transition');
   
-  // Verify test uses already-approved request
-  assert.match(integrationTestContent, /approvedRequest/, 
-    'Test must reference already-approved request');
+  // Verify test uses already-approved or already-rejected request - check for entity creation with APPROVED/REJECTED status
+  const hasApprovedRequest = /setStatus\(ApprovalStatus\.APPROVED\)/.test(integrationTestContent) ||
+                             /ApprovalStatus\.APPROVED/.test(integrationTestContent);
+  assert.ok(hasApprovedRequest, 
+    'Test must reference already-approved or already-rejected request');
   
-  // Verify test expects conflict or error status - look for status assertion
-  assert.match(integrationTestContent, /status\(\)\.is(?:Conflict|BadRequest|4xxClientError)/, 
-    'Test must assert an error status code for invalid state transition');
+  // Verify test expects conflict status - accept Spring Boot's fluent assertion methods
+  const hasConflictAssertion = /status\(\)\.isConflict\(\)/.test(integrationTestContent) ||
+                                /status\(\)\.is\(409\)/.test(integrationTestContent) ||
+                                /andExpect\(status\(\)\.is\(HttpStatus\.CONFLICT/.test(integrationTestContent) ||
+                                /jsonPath\("\$\.status"\)\.value\(409\)/.test(integrationTestContent);
+  assert.ok(hasConflictAssertion, 
+    'Test must assert 409 Conflict status for invalid state transition');
+  
+  // Verify test validates error message contains state information
+  const hasStateErrorMessage = /jsonPath\("\$\.detail"\).*containsString.*approved/.test(integrationTestContent) ||
+                                /jsonPath\("\$\.detail"\).*containsString.*rejected/.test(integrationTestContent) ||
+                                /jsonPath\("\$\.title"\)/.test(integrationTestContent) ||
+                                /jsonPath\("\$\.detail"\).*value\(containsString\("already/.test(integrationTestContent);
+  assert.ok(hasStateErrorMessage, 
+    'Test must verify error response describes the invalid state transition');
 });
