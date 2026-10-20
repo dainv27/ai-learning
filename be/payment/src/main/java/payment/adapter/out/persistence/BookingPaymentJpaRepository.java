@@ -1,0 +1,10 @@
+package payment.adapter.out.persistence;
+
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface BookingPaymentJpaRepository extends JpaRepository<BookingPaymentJpaEntity, UUID> {
+
+    Optional<BookingPaymentJpaEntity> findByBookingId(UUID bookingId);
+}
