@@ -1,0 +1,50 @@
+openapi: 3.0.0
+info:
+  title: Booking Service - Payment Module
+  version: 1.0.0
+paths:
+  /bookings/{bookingId}/cancel:
+    post:
+      summary: Cancel booking and initiate refund
+      operationId: cancelBooking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelBookingRequest'
+      responses:
+        '200':
+          description: Cancellation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelBookingResponse'
+        '400':
+          description: Invalid request or booking not cancellable
+components:
+  schemas:
+    CancelBookingRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+    CancelBookingResponse:
+      type: object
+      properties:
+        bookingId:
+          type: string
+        refundId:
+          type: string
+        refundStatus:
+          type: string
+        message:
+          type: string
