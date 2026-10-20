@@ -3,6 +3,7 @@ package com.phase0demo.reject.adapter.web;
 import com.phase0demo.reject.application.RejectApprovalUseCase;
 import com.phase0demo.reject.domain.model.Approval;
 import com.phase0demo.reject.domain.model.ApprovalNotFoundException;
+import com.phase0demo.reject.domain.model.IdempotencyConflictException;
 import com.phase0demo.reject.domain.model.InvalidStateTransitionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -67,6 +68,13 @@ public class RejectController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                 "error", Map.of(
                     "code", "INVALID_STATE_TRANSITION",
+                    "message", e.getMessage()
+                )
+            ));
+        } catch (IdempotencyConflictException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "error", Map.of(
+                    "code", "IDEMPOTENCY_CONFLICT",
                     "message", e.getMessage()
                 )
             ));
