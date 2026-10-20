@@ -97,8 +97,8 @@ Design unit tests for isolated functions (state transition logic, idempotency ch
 
 | ID | Title | Verifies | Priority | Result |
 |---|---|---|---|---|
-| TC-008 | Duplicate idempotency key returns cached result | Reject endpoint is idempotent: same key returns the same result without re-executing | HIGH | FAILED |
-| TC-009 | Different idempotency keys are treated as separate requests | Each unique idempotency key represents a distinct operation | MEDIUM | FAILED |
+| TC-008 | Duplicate idempotency key returns cached result | Reject endpoint is idempotent: same key returns the same result without re-executing | HIGH | PASSED |
+| TC-009 | Different idempotency keys are treated as separate requests | Each unique idempotency key represents a distinct operation | MEDIUM | PASSED |
 
 ### TC-008 — Duplicate idempotency key returns cached result
 
