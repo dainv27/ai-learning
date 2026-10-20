@@ -1,0 +1,13 @@
+{
+  "name": "vn-provinces-api-lambda",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/handler.test.js test/normalize.test.js test/data.test.js"
+  },
+  "dependencies": {}
+}
