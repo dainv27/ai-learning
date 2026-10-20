@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Reject approval endpoint
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: nodejs22.x
+    Architectures:
+      - x86_64
+
+Resources:
+  ApprovalsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-approvals
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-idempotency
+      AttributeDefinitions:
+        - AttributeName: idempotencyKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: idempotencyKey
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: IdempotencyKeyIndex
+          KeySchema:
+            - AttributeName: idempotencyKey
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  RejectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: reject-handler.handler
+      Environment:
+        Variables:
+          APPROVALS_TABLE: !Ref ApprovalsTable
+          IDEMPOTENCY_TABLE: !Ref IdempotencyTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ApprovalsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IdempotencyTable
+      Events:
+        RejectApproval:
+          Type: HttpApi
+          Properties:
+            Path: /api/approvals/{id}/reject
+            Method: POST
+
+Outputs:
+  RejectApi:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/approvals/{id}/reject'
+  RejectFunction:
+    Description: Lambda Function ARN
+    Value: !GetAtt RejectFunction.Arn
