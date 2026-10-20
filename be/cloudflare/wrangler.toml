@@ -1,0 +1,11 @@
+name = "internal-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Non-secret settings only. Placeholders: set real values per environment.
+# Secrets (never commit): PROXY_API_KEYS, UPSTREAM_ACCESS_CLIENT_ID,
+# UPSTREAM_ACCESS_CLIENT_SECRET -> use `wrangler secret put <NAME>`.
+[vars]
+ORDERS_ORIGIN = "https://orders.internal.example.com"
+USERS_ORIGIN = "https://users.internal.example.com"
+UPSTREAM_TIMEOUT_MS = "25000"
