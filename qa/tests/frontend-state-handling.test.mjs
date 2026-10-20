@@ -25,7 +25,7 @@ test('[TC-016] Frontend ApprovalDetail handles loading state', () => {
   // Verify buttons are disabled during loading
   assert.match(approvalDetailContent, /const isLoading = actionState === 'approving' \|\| actionState === 'rejecting'/, 
     'Component must compute isLoading based on actionState');
-  assert.match(approvalDetailContent, /disabled=\{isLoading/, 
+  assert.match(approvalDetailContent, /disabled=\{(?:isLoading|!canTakeAction)/, 
     'Buttons must be disabled during loading');
 });
 
@@ -72,7 +72,11 @@ test('[TC-019] Frontend disables actions for non-pending approvals', () => {
   assert.match(approvalDetailContent, /onClick=\{handleReject\}/, 
     'Reject button must exist with handleReject handler');
   
-  // Verify disabled condition includes isPending check (allow flexible whitespace)
-  assert.match(approvalDetailContent, /disabled=\{!isPending\s*\|\|\s*isLoading\}/, 
-    'Buttons must be disabled when status is not PENDING or when loading');
+  // Verify disabled condition - accept both explicit pattern and equivalent logic through canTakeAction
+  const hasExplicitPattern = /disabled=\{!isPending\s*\|\|\s*isLoading\}/.test(approvalDetailContent);
+  const hasEquivalentLogic = /const canTakeAction = isPending && !isLoading/.test(approvalDetailContent) && 
+                             /disabled=\{!canTakeAction\}/.test(approvalDetailContent);
+  
+  assert.ok(hasExplicitPattern || hasEquivalentLogic, 
+    'Buttons must be disabled when status is not PENDING or when loading (either explicit pattern or equivalent logic through canTakeAction)');
 });
