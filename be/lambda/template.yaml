@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Tiny uptime API - GET /uptime returns seconds since the function container started.
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 3
+    MemorySize: 128
+
+Resources:
+  UptimeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      # CodeUri is the module root so package.json ("type": "module") ships with the code.
+      CodeUri: ./
+      Handler: src/handler.handler
+      Description: Returns container uptime; answers 405 with Allow for non-GET methods.
+      Events:
+        UptimeAny:
+          Type: HttpApi
+          Properties:
+            # ANY (not GET) so wrong methods reach the handler, which returns 405 + Allow.
+            # A GET-only route would make HTTP API answer other methods with its own 404.
+            Method: ANY
+            Path: /uptime
+
+Outputs:
+  UptimeApiUrl:
+    Description: HTTP API endpoint URL for GET /uptime
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/uptime'

@@ -1,0 +1,13 @@
+{
+  "name": "time-api-uptime-lambda",
+  "version": "1.0.0",
+  "description": "Tiny AWS Lambda returning container uptime via API Gateway HTTP API",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  }
+}
