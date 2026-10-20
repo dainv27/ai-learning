@@ -3,18 +3,18 @@
 - Workflow: `ai-dev-7de4622f0b30`
 - Repository (logical): `phase0-demo`
 - Module: `reject`
-- Quality gate: **FAILED**
-- Command: `node --test --test-reporter=tap fe/fe/test/reject-path.test.mjs qa/tests/reject-handler.test.mjs` (real execution, exit code 1, 78 ms)
-- Runs: 3 (QA corrected its own tests between runs)
+- Quality gate: **PASSED**
+- Command: `node --test --test-reporter=tap fe/fe/test/reject-path.test.mjs qa/tests/reject-handler.test.mjs` (real execution, exit code 0, 75 ms)
+- Runs: 2 (QA corrected its own tests between runs)
 
 ## Results
 
 | Suite | Designed cases | Passed | Failed |
 |---|---|---|---|
-| Unit | 4 | 17 | 2 |
+| Unit | 4 | 19 | 0 |
 | Integration | 10 | - | - |
 
-Executed tests: 19, passed 17, failed 2.
+Executed tests: 19, passed 19, failed 0.
 
 ## Case results
 
@@ -27,82 +27,77 @@ Executed tests: 19, passed 17, failed 2.
 | TC-005 | PENDING approval can be rejected successfully | PASSED |
 | TC-006 | APPROVED approval cannot be rejected (returns 409) | PASSED |
 | TC-007 | REJECTED approval cannot be rejected again (returns 409) | PASSED |
-| TC-008 | Duplicate idempotency key returns cached result | FAILED |
-| TC-009 | Different idempotency keys are treated as separate requests | FAILED |
+| TC-008 | Duplicate idempotency key returns cached result | PASSED |
+| TC-009 | Different idempotency keys are treated as separate requests | PASSED |
 | TC-010 | Non-existent approval id returns 404 | PASSED |
 | TC-011 | Invalid UUID format in path is handled gracefully | PASSED |
 | TC-012 | Success response contains all required approval fields | PASSED |
 | TC-013 | Error responses have consistent shape | PASSED |
 | TC-014 | Response Content-Type is application/json | PASSED |
 
-## Issues for the engineers
-
-- [BOTH] Test "[TC-008] Duplicate idempotency key returns cached result" failed: Cached result should use original comment, not new one + actual - expected  + 'Different comment' - 'First rejection'
-- [BOTH] Test "[TC-009] Different idempotency keys are treated as separate requests" failed: Different idempotency key should process request, not return cache  200 !== 409
-
 ## Raw output (tail)
 
 ```text
-  duration_ms: 1.972061
+      ...
+    1..2
+ok 8 - TS-003: Idempotency behavior
+  ---
+  duration_ms: 1.465332
   type: 'suite'
-  location: '/tmp/qa-run-otj177/qa/tests/reject-handler.test.mjs:292:1'
-  failureType: 'subtestsFailed'
-  error: '2 subtests failed'
-  code: 'ERR_TEST_FAILURE'
   ...
 # Subtest: TS-004: Error handling
     # Subtest: [TC-010] Non-existent approval id returns 404
     ok 1 - [TC-010] Non-existent approval id returns 404
       ---
-      duration_ms: 0.157963
+      duration_ms: 0.160844
       type: 'test'
       ...
     # Subtest: [TC-011] Invalid UUID format in path is handled gracefully
     ok 2 - [TC-011] Invalid UUID format in path is handled gracefully
       ---
-      duration_ms: 0.083173
+      duration_ms: 0.133866
       type: 'test'
       ...
     1..2
 ok 9 - TS-004: Error handling
   ---
-  duration_ms: 0.304466
+  duration_ms: 0.351813
   type: 'suite'
   ...
 # Subtest: TS-005: Response contract validation
     # Subtest: [TC-012] Success response contains all required approval fields
     ok 1 - [TC-012] Success response contains all required approval fields
       ---
-      duration_ms: 0.114518
+      duration_ms: 0.117403
       type: 'test'
       ...
     # Subtest: [TC-013] Error responses have consistent shape
     ok 2 - [TC-013] Error responses have consistent shape
       ---
-      duration_ms: 0.063656
+      duration_ms: 0.06075
       type: 'test'
       ...
     # Subtest: [TC-014] Response Content-Type is application/json
     ok 3 - [TC-014] Response Content-Type is application/json
       ---
-      duration_ms: 0.055765
+      duration_ms: 0.061527
       type: 'test'
       ...
     1..3
 ok 10 - TS-005: Response contract validation
   ---
-  duration_ms: 0.332697
+  duration_ms: 0.292216
   type: 'suite'
   ...
 1..10
 # tests 19
 # suites 5
-# pass 17
-# fail 2
+# pass 19
+# fail 0
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 52.125231
+# duration_ms 50.319204
 ```
 
 > Written by Quyên (QA engineer) of the AI Agent Team, backed by **anthropic/claude-sonnet-4.5** (openrouter).
