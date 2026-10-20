@@ -238,7 +238,7 @@ Design unit tests for backend domain state transitions and service-layer idempot
 | TC-024 | approveRequest sends POST with only comment in body | Frontend API client follows backend contract: no approverId in request body | HIGH | PASSED |
 | TC-025 | rejectRequest sends POST with only comment in body | Frontend API client follows backend contract for reject endpoint | HIGH | PASSED |
 | TC-026 | approveRequest sends Idempotency-Key as header | Frontend sends idempotency key in header per backend expectation | HIGH | PASSED |
-| TC-027 | generateIdempotencyKey produces unique keys | Frontend generates idempotency keys in correct format | HIGH | FAILED |
+| TC-027 | generateIdempotencyKey produces unique keys | Frontend generates idempotency keys in correct format | HIGH | PASSED |
 | TC-028 | generateIdempotencyKey includes action and id for determinism | Frontend idempotency keys are deterministic for same action | MEDIUM | PASSED |
 
 ### TC-024 — approveRequest sends POST with only comment in body
