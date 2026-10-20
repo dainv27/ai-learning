@@ -1,0 +1,160 @@
+openapi: 3.0.3
+info:
+  title: Approval API
+  version: 1.0.0
+  description: API for managing approval requests in the stable demo path
+paths:
+  /api/approvals/{id}/approve:
+    post:
+      summary: Approve an approval request
+      operationId: approveRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the approval request
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Idempotency key to prevent duplicate processing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reviewerId
+              properties:
+                reviewerId:
+                  type: string
+                  description: ID of the reviewer approving the request
+                comment:
+                  type: string
+                  description: Optional comment from the reviewer
+      responses:
+        '200':
+          description: Approval successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approvalRequestId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [APPROVED]
+                  wasIdempotent:
+                    type: boolean
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Approval request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/approvals/{id}/reject:
+    post:
+      summary: Reject an approval request
+      operationId: rejectRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The ID of the approval request
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Idempotency key to prevent duplicate processing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reviewerId
+                - comment
+              properties:
+                reviewerId:
+                  type: string
+                  description: ID of the reviewer rejecting the request
+                comment:
+                  type: string
+                  description: Required comment explaining the rejection
+      responses:
+        '200':
+          description: Rejection successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approvalRequestId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [REJECTED]
+                  wasIdempotent:
+                    type: boolean
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Approval request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+            message:
+              type: string
+              description: Human-readable error message
