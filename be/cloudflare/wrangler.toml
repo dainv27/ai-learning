@@ -1,0 +1,9 @@
+name = 'internal-proxy'
+main = 'src/index.ts'
+compatibility_date = '2024-09-23'
+
+[vars]
+ACCESS_TEAM_DOMAIN = 'your-team.cloudflareaccess.com'
+ACCESS_AUD = 'replace-with-access-application-aud'
+SVC_A_ORIGIN = 'https://service-a.internal.example'
+SVC_B_ORIGIN = 'https://service-b.internal.example'
