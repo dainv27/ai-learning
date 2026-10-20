@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Time API - GET /time returns the current UTC time as ISO 8601
+
+Resources:
+  TimeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs22.x
+      Handler: src/handler.handler
+      CodeUri: .
+      MemorySize: 128
+      Timeout: 3
+      Events:
+        TimeApi:
+          Type: HttpApi
+          Properties:
+            Method: ANY
+            Path: /time
+            PayloadFormatVersion: '2.0'
+
+Outputs:
+  TimeApiEndpoint:
+    Description: HTTP API URL for GET /time
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/time'
