@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Vietnam provinces API (GET /provinces) on AWS Lambda behind an HTTP API
+
+Resources:
+  ProvincesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handler.handler
+      Runtime: nodejs22.x
+      MemorySize: 128
+      Timeout: 5
+      Events:
+        ListProvinces:
+          Type: HttpApi
+          Properties:
+            Method: ANY
+            Path: /provinces
+            PayloadFormatVersion: '2.0'
+
+Outputs:
+  ProvincesApiUrl:
+    Description: Endpoint URL for GET /provinces
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/provinces'
