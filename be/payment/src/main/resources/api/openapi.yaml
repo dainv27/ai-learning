@@ -1,0 +1,72 @@
+openapi: 3.0.3
+info:
+  title: Payment API
+  version: 1.0.0
+paths:
+  /bookings/{bookingId}/cancellation:
+    post:
+      operationId: cancelBooking
+      summary: Cancel a booking and refund the payment
+      tags:
+        - BookingCancellation
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelBookingRequest'
+      responses:
+        '200':
+          description: Refund processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Booking payment not found
+        '500':
+          description: Internal server error
+components:
+  schemas:
+    CancelBookingRequest:
+      type: object
+      required:
+        - idempotencyKey
+      properties:
+        idempotencyKey:
+          type: string
+          format: uuid
+    RefundResponse:
+      type: object
+      properties:
+        refundId:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        idempotencyKey:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+        status:
+          type: string
+          enum:
+            - PENDING
+            - COMPLETED
+            - FAILED
+        failureReason:
+          type: string
